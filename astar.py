@@ -1,6 +1,6 @@
 #! /usr/bin/env python
 
-import optparse, copy
+import optparse, copy, heapq
 import logging
 
 logging.basicConfig ( level=logging.INFO )
@@ -98,26 +98,23 @@ class AStarNode ( object ):
 
 		
 def a_star ( initial_game_state ):
-	leaf_nodes = { initial_game_state: AStarNode(initial_game_state,0,initial_game_state.estimate_cost_to_goal()) }
-	other_nodes = {}
+
+	a = AStarNode(initial_game_state,0,initial_game_state.estimate_cost_to_goal())
+	nodes = { initial_game_state:a }
+	queue = []
+	heapq.heappush ( queue, (a.cost+a.estimate_to_goal,a) )
+
 	iterations = 0
-	leaf_nodes_matched = 0
-	other_nodes_matched = 0
+	nodes_matched = 0
+	nodes_replaced = 0
 	
 	while True:
-		logging.debug ( "%d leaf nodes %d other nodes", len(leaf_nodes), len(other_nodes) )
-		if not leaf_nodes:
-			raise ValueError ( "our list of nodes is empty! what?" )
-		best_node = None
-		best_estimate = None
-		for node in leaf_nodes.values():
-			if best_node is None or node.cost + node.estimate_to_goal < best_estimate:
-				best_node = node
-				best_estimate = node.cost + node.estimate_to_goal
+		logging.debug ( "%d nodes %d queued", len(nodes), len(queue) )
+		if not queue:
+			raise ValueError ( "our queue is empty! what?" )
+		best_estimate, best_node = heapq.heappop ( queue )
 		if iterations%1000 == 0:
-			logging.info ( "leaf nodes %d other nodes %d best estimate %r leaf nodes matched %d other nodes matched %d", len(leaf_nodes), len(other_nodes), best_estimate, leaf_nodes_matched, other_nodes_matched )
-		del leaf_nodes[best_node.game_state]
-		other_nodes[best_node.game_state] = best_node
+			logging.info ( "nodes %d queue %d best estimate %r nodes matched %d nodes_replaced %d", len(nodes), len(queue), best_estimate, nodes_matched, nodes_replaced )
 		logging.debug ( "best potential is %r with cost %r and estimate %r", best_node.game_state, best_node.cost, best_node.estimate_to_goal )
 		if best_node.game_state.is_goal ():
 			logging.debug ( "optimal goal found. end state %r cost %r operations %r", best_node.game_state, best_node.cost, best_node.operations_to_date )
@@ -129,31 +126,24 @@ def a_star ( initial_game_state ):
 			logging.debug ( "operation %r cost %r creates new state %r with estimate %r", operation, cost, new_state, estimate )
 			
 			try:
-				found_node = leaf_nodes[new_state]
-				leaf_nodes_matched += 1
+				found_node = nodes[new_state]
+				nodes_matched += 1
 				if new_cost < found_node.cost:
-					logging.debug ( "new state is better than a leaf_node. replacing" )
+					logging.debug ( "new state is better than a matched node. replacing and adding back into queue" )
+					nodes_replaced += 1
 				else:
-					logging.debug ( "new state matches a leaf node at cost %r. discarding", found_node.cost )
+					logging.debug ( "new state matches a node with cost %r. discarding", found_node.cost )
 					continue
 			except KeyError:
 				pass
 				
-			try:
-				found_node = other_nodes[new_state]
-				other_nodes_matched += 1
-				if new_cost < found_node.cost:
-					logging.debug ( "new state is better than an other node. replacing" )
-				else:
-					logging.debug ( "new state matches an other node at cost %r. discarding", found_node.cost )
-					continue
-			except KeyError:
-				pass
-				
-			logging.debug ( "adding to node list" )
 			a = AStarNode ( new_state, new_cost, estimate )
 			a.operations_to_date = best_node.operations_to_date + [ ( operation, cost ) ]
-			leaf_nodes[new_state] = a
+
+			logging.debug ( "adding to node list" )
+			nodes[new_state] = a			
+			heap_key = ( new_cost+estimate, a )
+			heapq.heappush ( queue, heap_key )
 		iterations += 1
 				
 				
