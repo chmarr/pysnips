@@ -5,15 +5,15 @@ import logging
 
 logging.basicConfig ( level=logging.INFO )
 
-cli_usage = "%prog: [options] ... argument"
+cli_usage = "%prog: [options]"
 
 cli_description = """\
-Description of utility here
+Demonstrate A* search using sliding puzzle.
 """
 
 cli_defaults = dict (
 	example_num = 0,
-	epsilon = 1.0,
+	epsilon = 1,
 )
 
 
@@ -80,6 +80,7 @@ class GenericPuzzleBoard ( object ):
 		
 
 def make_puzzleboard ( x_dimension, y_dimension, new_epsilon=1 ):
+	"""Make a puzzleboard class with specific X and Y dimensions, and epsilon"""
 	class PuzzleBoard ( GenericPuzzleBoard ):
 		epsilon = new_epsilon
 		xdim = x_dimension
@@ -92,15 +93,44 @@ def make_puzzleboard ( x_dimension, y_dimension, new_epsilon=1 ):
 class AStarNode ( object ):
 	def __init__ ( self, game_state, cost, estimate_to_goal=None ):
 		self.game_state = game_state
-		self.cost = cost
+		self.cost = cost 
 		self.estimate_to_goal = estimate_to_goal
 		self.operations_to_date = []
 	def __eq__ ( self, other ):
 		return self.game_state == other.game_state
 	def __hash__ ( self ):
 		return hash(self.game_state)
-
 		
+
+
+# Game states must be objects with the following methods
+#
+# is_goal () - returns True if the current state is a goal
+# valid_operations_and_costs () - returns a list of tuples of form ( op, cost )
+#              where "op" represents an operation (may be any type), and
+#              "cost" is the cost of that operation (may be any scalar type)
+# copy_board ( operation=None ) - creates a new state from the current
+#              if "operation" is not None, then apply that operation to the state
+# estimate_cost_to_goal () - returns a "permissive" estimate of the cost
+#              from this state to the goal state. Estimate <= Actual
+# __eq__ ( other ) - returns True if the game states are equal
+# __hash__ () - returns a hash suitable for the game state.
+#               If game states are equal, the hash must also be equal
+#
+# To prune duplicated states, states must be both comparable, and be
+# used as a key to a dictionary, thus the __eq__ and __hash__ methods.
+#
+# a_star will maintain a list of operations preceeding each state, but
+# the game state is allowed to keep track of this too, and even use
+# it in the determination of equal game states. However, unless that
+# is important for costs, do not do this as it will significantly
+# slow down the a_star search.
+#
+# "operations" may be any type. a_star will feed the "copy_board" method
+# operations it receives from the "valid_operations_and_costs" method
+#
+# costs and estimates may be any type that can be compared and added
+
 def a_star ( initial_game_state ):
 
 	a = AStarNode(initial_game_state,0,initial_game_state.estimate_cost_to_goal())
@@ -176,7 +206,7 @@ def get_options ():
 	parser = optparse.OptionParser ( usage=cli_usage, description=cli_description )
 	parser.set_defaults ( **cli_defaults )
 	
-	parser.add_option ( "-n", "--example_num", type="int", help="Change the value [%default]" )
+	parser.add_option ( "-n", "--example_num", type="int", help="example puzzle number [%default]" )
 	parser.add_option ( "-e", "--epsilon", type="float" )
 	opts, args = parser.parse_args ()
 	
