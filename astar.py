@@ -12,11 +12,14 @@ Description of utility here
 """
 
 cli_defaults = dict (
-	option1 = "default1",
+	example_num = 0,
+	epsilon = 1.0,
 )
 
 
 class GenericPuzzleBoard ( object ):
+
+	epsilon = 1
 
 	def __init__ ( self, board=None ):
 		if board is None:
@@ -64,7 +67,7 @@ class GenericPuzzleBoard ( object ):
 		for index, val in enumerate(self.board):
 			if val == None: continue
 			total += distance ( index, val-1 )
-		return total
+		return total * self.epsilon
 			
 	def __eq__ ( self, other ):
 		return self.board == other.board
@@ -76,8 +79,9 @@ class GenericPuzzleBoard ( object ):
 		return hash(self.board)
 		
 
-def make_puzzleboard ( x_dimension, y_dimension ):
+def make_puzzleboard ( x_dimension, y_dimension, new_epsilon=1 ):
 	class PuzzleBoard ( GenericPuzzleBoard ):
+		epsilon = new_epsilon
 		xdim = x_dimension
 		ydim = y_dimension
 		goal_board = tuple ( range(1,xdim*ydim) + [None] )
@@ -165,9 +169,9 @@ examples = [
 	]
 				
 		
-def sliding_puzzle ( example_num ):
+def sliding_puzzle ( example_num, epsilon ):
 
-	PuzzleBoard = make_puzzleboard ( 4, 4 )
+	PuzzleBoard = make_puzzleboard ( 4, 4, epsilon )
 
 	board = PuzzleBoard ( board = examples[example_num] )
 	
@@ -183,6 +187,7 @@ def get_options ():
 	parser.set_defaults ( **cli_defaults )
 	
 	parser.add_option ( "-n", "--example_num", type="int", help="Change the value [%default]" )
+	parser.add_option ( "-e", "--epsilon", type="float" )
 	opts, args = parser.parse_args ()
 	
 	# No arguments allowed
@@ -193,4 +198,4 @@ def get_options ():
 
 if __name__ == "__main__":
 	opts = get_options ()
-	sliding_puzzle ( opts.example_num )
+	sliding_puzzle ( opts.example_num, opts.epsilon )
