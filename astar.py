@@ -87,19 +87,6 @@ def make_puzzleboard ( x_dimension, y_dimension, new_epsilon=1 ):
 		goal_board = tuple ( range(1,xdim*ydim) + [None] )
 		operations_blank_swaps_with = dict ( u=xdim, r=-1, d=-xdim, l=1 )
 	return PuzzleBoard
-		
-
-class AStarNode ( object ):
-	def __init__ ( self, game_state, cost, estimate_to_goal=None ):
-		self.game_state = game_state
-		self.cost = cost 
-		self.estimate_to_goal = estimate_to_goal
-		self.operations_to_date = []
-	def __eq__ ( self, other ):
-		return self.game_state == other.game_state
-	def __hash__ ( self ):
-		return hash(self.game_state)
-		
 
 
 # Game states must be objects with the following methods
@@ -130,6 +117,17 @@ class AStarNode ( object ):
 # operations it receives from the "valid_operations_and_costs" method
 #
 # costs and estimates may be any type that can be compared and added
+		
+class AStarNode ( object ):
+	def __init__ ( self, game_state, cost, estimate_to_goal=None ):
+		self.game_state = game_state
+		self.cost = cost 
+		self.estimate_to_goal = estimate_to_goal
+		self.operations_to_date = []
+	def __eq__ ( self, other ):
+		return self.game_state == other.game_state
+	def __hash__ ( self ):
+		return hash(self.game_state)
 
 def a_star ( initial_game_state ):
 
@@ -186,6 +184,7 @@ examples = [
 	[ 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, None, 13, 14, 15, 12 ],
 	[ 1, 3, 11, 8, 5, 4, 15, 10, 7, 2, 12, 13, 14, 9, 6, None ],
 	[ 1, None, 3, 4, 6, 2, 11, 10, 5, 8, 7, 9, 14, 12, 15, 13 ],
+	[ None, 12, 9, 13, 15, 11, 10, 14, 3, 7, 2, 5, 4, 8, 6, 1 ], # needs 80 moves - highest possible
 	]
 				
 		
