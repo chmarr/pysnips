@@ -41,11 +41,10 @@ class GenericPuzzleBoard ( object ):
 		return self.board == self.goal_board
 		
 	def valid_operations_and_costs ( self ):
-		# 0=move piece up, 1=move piece right, 2=move piece down, 3=move piece left
-		if self.blank_pos < self.xdim * (self.ydim-1): yield (0,1)
-		if ( self.blank_pos % self.xdim ) != 0: yield (1,1)
-		if self.blank_pos >= self.xdim: yield (2,1)
-		if ( (self.blank_pos+1) % self.xdim ) != 0: yield (3,1)
+		if self.blank_pos < self.xdim * (self.ydim-1): yield ('u',1)
+		if ( self.blank_pos % self.xdim ) != 0: yield ('r',1)
+		if self.blank_pos >= self.xdim: yield ('d',1)
+		if ( (self.blank_pos+1) % self.xdim ) != 0: yield ('l',1)
 		
 	def copy_board ( self, operation=None ):
 		if operation is not None:
@@ -86,7 +85,7 @@ def make_puzzleboard ( x_dimension, y_dimension, new_epsilon=1 ):
 		xdim = x_dimension
 		ydim = y_dimension
 		goal_board = tuple ( range(1,xdim*ydim) + [None] )
-		operations_blank_swaps_with = [ xdim, -1, -xdim, 1 ]
+		operations_blank_swaps_with = dict ( u=xdim, r=-1, d=-xdim, l=1 )
 	return PuzzleBoard
 		
 
@@ -108,7 +107,8 @@ class AStarNode ( object ):
 # is_goal () - returns True if the current state is a goal
 # valid_operations_and_costs () - returns a list of tuples of form ( op, cost )
 #              where "op" represents an operation (may be any type), and
-#              "cost" is the cost of that operation (may be any scalar type)
+#              "cost" is the cost of that operation (may be any scalar type).
+#              A generator is allowed.
 # copy_board ( operation=None ) - creates a new state from the current
 #              if "operation" is not None, then apply that operation to the state
 # estimate_cost_to_goal () - returns a "permissive" estimate of the cost
