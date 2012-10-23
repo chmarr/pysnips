@@ -14,12 +14,11 @@ Demonstrate A* search using sliding puzzle.
 cli_defaults = dict (
 	example_num = 0,
 	epsilon = 1,
+	heuristic = "manhattan"
 )
 
 
 class GenericPuzzleBoard ( object ):
-
-	epsilon = 1
 
 	def __init__ ( self, board=None ):
 		if board is None:
@@ -57,17 +56,6 @@ class GenericPuzzleBoard ( object ):
 		b = self.__class__ ( temp_board )
 		return b
 		
-	def estimate_cost_to_goal ( self ):
-		def distance ( x, y ):
-			xd, xm = divmod(x,self.xdim)
-			yd, ym = divmod(y,self.xdim)
-			return abs(xd-yd) + abs(xm-ym)
-		total = 0
-		for index, val in enumerate(self.board):
-			if val == None: continue
-			total += distance ( index, val-1 )
-		return total * self.epsilon
-			
 	def __eq__ ( self, other ):
 		return self.board == other.board
 		
@@ -77,11 +65,34 @@ class GenericPuzzleBoard ( object ):
 	def __hash__ ( self ):
 		return hash(self.board)
 		
+		
+class ManhattanHeuristic ( object ):
+	def estimate_cost_to_goal ( self ):
+		def distance ( x, y ):
+			xd, xm = divmod(x,self.xdim)
+			yd, ym = divmod(y,self.xdim)
+			return abs(xd-yd) + abs(xm-ym)
+		total = 0
+		for index, val in enumerate(self.board):
+			if val == None: continue
+			total += distance ( index, val-1 )
+		return total
 
-def make_puzzleboard ( x_dimension, y_dimension, new_epsilon=1 ):
-	"""Make a puzzleboard class with specific X and Y dimensions, and epsilon"""
-	class PuzzleBoard ( GenericPuzzleBoard ):
-		epsilon = new_epsilon
+		
+class HammingHeuristic ( object ):
+	"This heuristic is total crap - not useful except for the simplest of solutions."
+	def estimate_cost_to_goal ( self ):
+		total = 0
+		for index, val in enumerate(self.board):
+			if val == None: continue
+			if val-1 != index:
+				total += 1
+		return total
+			
+
+def make_puzzleboard ( x_dimension, y_dimension, heuristic=ManhattanHeuristic ):
+	"""Make a puzzleboard class with specific X and Y dimensions, and a heuristic mix-in"""
+	class PuzzleBoard ( GenericPuzzleBoard, heuristic ):
 		xdim = x_dimension
 		ydim = y_dimension
 		goal_board = tuple ( range(1,xdim*ydim) + [None] )
@@ -129,9 +140,10 @@ class AStarNode ( object ):
 	def __hash__ ( self ):
 		return hash(self.game_state)
 
-def a_star ( initial_game_state ):
 
-	a = AStarNode(initial_game_state,0,initial_game_state.estimate_cost_to_goal())
+def a_star ( initial_game_state, epsilon=1 ):
+
+	a = AStarNode(initial_game_state,0,initial_game_state.estimate_cost_to_goal() * epsilon )
 	nodes = { initial_game_state:a }
 	queue = []
 	heapq.heappush ( queue, (a.cost+a.estimate_to_goal,a) )
@@ -154,7 +166,7 @@ def a_star ( initial_game_state ):
 		for operation, cost in best_node.game_state.valid_operations_and_costs ():
 			new_state = best_node.game_state.copy_board ( operation )
 			new_cost = best_node.cost + cost
-			estimate = new_state.estimate_cost_to_goal()
+			estimate = new_state.estimate_cost_to_goal() * epsilon
 			logging.debug ( "operation %r cost %r creates new state %r with estimate %r", operation, cost, new_state, estimate )
 			
 			try:
@@ -184,17 +196,23 @@ examples = [
 	[ 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, None, 13, 14, 15, 12 ],
 	[ 1, 3, 11, 8, 5, 4, 15, 10, 7, 2, 12, 13, 14, 9, 6, None ],
 	[ 1, None, 3, 4, 6, 2, 11, 10, 5, 8, 7, 9, 14, 12, 15, 13 ],
-	[ None, 12, 9, 13, 15, 11, 10, 14, 3, 7, 2, 5, 4, 8, 6, 1 ], # needs 80 moves - highest possible
+	[ None, 12, 9, 13, 15, 11, 10, 14, 3, 7, 2, 5, 4, 8, 6, 1 ], # needs 80 moves - highest possible - runs out of memory for a_star
 	]
 				
 		
-def sliding_puzzle ( example_num, epsilon ):
+def sliding_puzzle ( example_num, epsilon, heuristic ):
 
-	PuzzleBoard = make_puzzleboard ( 4, 4, epsilon )
+	heuristic_name = heuristic.title() + "Heuristic"
+	try:
+		heuristic_class = globals()[heuristic_name]
+	except KeyError:
+		raise ValueError ( "Unknown heuristic: %s" % heuristic )
+
+	PuzzleBoard = make_puzzleboard ( 4, 4, heuristic_class )
 
 	board = PuzzleBoard ( board = examples[example_num] )
 	
-	end_state, cost, operations = a_star ( board )
+	end_state, cost, operations = a_star ( board, epsilon )
 	
 	print end_state.board, cost, operations
 	
@@ -207,6 +225,7 @@ def get_options ():
 	
 	parser.add_option ( "-n", "--example_num", type="int", help="example puzzle number [%default]" )
 	parser.add_option ( "-e", "--epsilon", type="float" )
+	parser.add_option ( "--heuristic", type="str", help="heuristic to use [%default]" )
 	opts, args = parser.parse_args ()
 	
 	# No arguments allowed
@@ -217,4 +236,4 @@ def get_options ():
 
 if __name__ == "__main__":
 	opts = get_options ()
-	sliding_puzzle ( opts.example_num, opts.epsilon )
+	sliding_puzzle ( opts.example_num, opts.epsilon, opts.heuristic )
