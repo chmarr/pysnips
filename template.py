@@ -2,7 +2,7 @@
 
 import optparse
 
-cli_usage = "%prog: [options] ... argument"
+cli_usage = "%prog [options] ... argument"
 
 cli_description = """\
 Description of utility here
