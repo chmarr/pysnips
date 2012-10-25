@@ -5,14 +5,16 @@ import logging
 
 logging.basicConfig ( level=logging.INFO )
 
-cli_usage = "%prog: [options] ... argument"
+cli_usage = "%prog: [options]"
 
 cli_description = """\
-Description of utility here
+Demonstrate A* search using sliding puzzle.
 """
 
 cli_defaults = dict (
-	option1 = "default1",
+	example_num = 0,
+	epsilon = 1,
+	heuristic = "manhattan"
 )
 
 
@@ -38,11 +40,10 @@ class GenericPuzzleBoard ( object ):
 		return self.board == self.goal_board
 		
 	def valid_operations_and_costs ( self ):
-		# 0=move piece up, 1=move piece right, 2=move piece down, 3=move piece left
-		if self.blank_pos < self.xdim * (self.ydim-1): yield (0,1)
-		if ( self.blank_pos % self.xdim ) != 0: yield (1,1)
-		if self.blank_pos >= self.xdim: yield (2,1)
-		if ( (self.blank_pos+1) % self.xdim ) != 0: yield (3,1)
+		if self.blank_pos < self.xdim * (self.ydim-1): yield ('u',1)
+		if ( self.blank_pos % self.xdim ) != 0: yield ('r',1)
+		if self.blank_pos >= self.xdim: yield ('d',1)
+		if ( (self.blank_pos+1) % self.xdim ) != 0: yield ('l',1)
 		
 	def copy_board ( self, operation=None ):
 		if operation is not None:
@@ -55,6 +56,17 @@ class GenericPuzzleBoard ( object ):
 		b = self.__class__ ( temp_board )
 		return b
 		
+	def __eq__ ( self, other ):
+		return self.board == other.board
+		
+	def __repr__ ( self ):
+		return "PuzzleBoard ( %r, %r, %r )" % ( self.xdim, self.ydim, self.board )
+		
+	def __hash__ ( self ):
+		return hash(self.board)
+		
+		
+class ManhattanHeuristic ( object ):
 	def estimate_cost_to_goal ( self ):
 		def distance ( x, y ):
 			xd, xm = divmod(x,self.xdim)
@@ -65,30 +77,62 @@ class GenericPuzzleBoard ( object ):
 			if val == None: continue
 			total += distance ( index, val-1 )
 		return total
-			
-	def __eq__ ( self, other ):
-		return self.board == other.board
-		
-	def __repr__ ( self ):
-		return "PuzzleBoard ( %r, %r, %r )" % ( self.xdim, self.ydim, self.board )
-		
-	def __hash__ ( self ):
-		return hash(self.board)
-		
 
-def make_puzzleboard ( x_dimension, y_dimension ):
-	class PuzzleBoard ( GenericPuzzleBoard ):
+		
+class HammingHeuristic ( object ):
+	"This heuristic is total crap - not useful except for the simplest of solutions."
+	def estimate_cost_to_goal ( self ):
+		total = 0
+		for index, val in enumerate(self.board):
+			if val == None: continue
+			if val-1 != index:
+				total += 1
+		return total
+			
+
+def make_puzzleboard ( x_dimension, y_dimension, heuristic=ManhattanHeuristic ):
+	"""Make a puzzleboard class with specific X and Y dimensions, and a heuristic mix-in"""
+	class PuzzleBoard ( GenericPuzzleBoard, heuristic ):
 		xdim = x_dimension
 		ydim = y_dimension
 		goal_board = tuple ( range(1,xdim*ydim) + [None] )
-		operations_blank_swaps_with = [ xdim, -1, -xdim, 1 ]
+		operations_blank_swaps_with = dict ( u=xdim, r=-1, d=-xdim, l=1 )
 	return PuzzleBoard
-		
 
+
+# Game states must be objects with the following methods
+#
+# is_goal () - returns True if the current state is a goal
+# valid_operations_and_costs () - returns a list of tuples of form ( op, cost )
+#              where "op" represents an operation (may be any type), and
+#              "cost" is the cost of that operation (may be any scalar type).
+#              A generator is allowed.
+# copy_board ( operation=None ) - creates a new state from the current
+#              if "operation" is not None, then apply that operation to the state
+# estimate_cost_to_goal () - returns a "permissive" estimate of the cost
+#              from this state to the goal state. Estimate <= Actual
+# __eq__ ( other ) - returns True if the game states are equal
+# __hash__ () - returns a hash suitable for the game state.
+#               If game states are equal, the hash must also be equal
+#
+# To prune duplicated states, states must be both comparable, and be
+# used as a key to a dictionary, thus the __eq__ and __hash__ methods.
+#
+# a_star will maintain a list of operations preceeding each state, but
+# the game state is allowed to keep track of this too, and even use
+# it in the determination of equal game states. However, unless that
+# is important for costs, do not do this as it will significantly
+# slow down the a_star search.
+#
+# "operations" may be any type. a_star will feed the "copy_board" method
+# operations it receives from the "valid_operations_and_costs" method
+#
+# costs and estimates may be any type that can be compared and added
+		
 class AStarNode ( object ):
 	def __init__ ( self, game_state, cost, estimate_to_goal=None ):
 		self.game_state = game_state
-		self.cost = cost
+		self.cost = cost 
 		self.estimate_to_goal = estimate_to_goal
 		self.operations_to_date = []
 	def __eq__ ( self, other ):
@@ -96,10 +140,10 @@ class AStarNode ( object ):
 	def __hash__ ( self ):
 		return hash(self.game_state)
 
-		
-def a_star ( initial_game_state ):
 
-	a = AStarNode(initial_game_state,0,initial_game_state.estimate_cost_to_goal())
+def a_star ( initial_game_state, epsilon=1 ):
+
+	a = AStarNode(initial_game_state,0,initial_game_state.estimate_cost_to_goal() * epsilon )
 	nodes = { initial_game_state:a }
 	queue = []
 	heapq.heappush ( queue, (a.cost+a.estimate_to_goal,a) )
@@ -122,7 +166,7 @@ def a_star ( initial_game_state ):
 		for operation, cost in best_node.game_state.valid_operations_and_costs ():
 			new_state = best_node.game_state.copy_board ( operation )
 			new_cost = best_node.cost + cost
-			estimate = new_state.estimate_cost_to_goal()
+			estimate = new_state.estimate_cost_to_goal() * epsilon
 			logging.debug ( "operation %r cost %r creates new state %r with estimate %r", operation, cost, new_state, estimate )
 			
 			try:
@@ -152,16 +196,23 @@ examples = [
 	[ 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, None, 13, 14, 15, 12 ],
 	[ 1, 3, 11, 8, 5, 4, 15, 10, 7, 2, 12, 13, 14, 9, 6, None ],
 	[ 1, None, 3, 4, 6, 2, 11, 10, 5, 8, 7, 9, 14, 12, 15, 13 ],
+	[ None, 12, 9, 13, 15, 11, 10, 14, 3, 7, 2, 5, 4, 8, 6, 1 ], # needs 80 moves - highest possible - runs out of memory for a_star
 	]
 				
 		
-def sliding_puzzle ( example_num ):
+def sliding_puzzle ( example_num, epsilon, heuristic ):
 
-	PuzzleBoard = make_puzzleboard ( 4, 4 )
+	heuristic_name = heuristic.title() + "Heuristic"
+	try:
+		heuristic_class = globals()[heuristic_name]
+	except KeyError:
+		raise ValueError ( "Unknown heuristic: %s" % heuristic )
+
+	PuzzleBoard = make_puzzleboard ( 4, 4, heuristic_class )
 
 	board = PuzzleBoard ( board = examples[example_num] )
 	
-	end_state, cost, operations = a_star ( board )
+	end_state, cost, operations = a_star ( board, epsilon )
 	
 	print end_state.board, cost, operations
 	
@@ -172,7 +223,9 @@ def get_options ():
 	parser = optparse.OptionParser ( usage=cli_usage, description=cli_description )
 	parser.set_defaults ( **cli_defaults )
 	
-	parser.add_option ( "-n", "--example_num", type="int", help="Change the value [%default]" )
+	parser.add_option ( "-n", "--example_num", type="int", help="example puzzle number [%default]" )
+	parser.add_option ( "-e", "--epsilon", type="float" )
+	parser.add_option ( "--heuristic", type="str", help="heuristic to use [%default]" )
 	opts, args = parser.parse_args ()
 	
 	# No arguments allowed
@@ -183,4 +236,4 @@ def get_options ():
 
 if __name__ == "__main__":
 	opts = get_options ()
-	sliding_puzzle ( opts.example_num )
+	sliding_puzzle ( opts.example_num, opts.epsilon, opts.heuristic )
