@@ -1,9 +1,14 @@
 #! /usr/bin/env python
 
 import optparse
-# import loggging
 
-cli_usage = "%prog [options] ... argument"
+# import logging
+## Edit the formatting to your liking. What is shown is rather verbose.
+## We assume WARNING is sufficient for any logging needed before options are parsed.
+# logging.basicConfig ( level=logging.WARNING, format="%(asctime)s %(processName)s[%(process)d]: %(name)s: %(message)s" )
+# logger = logging.getLogger( __name__ if __name__!="__main__" else "main" )
+
+cli_usage = "%prog [options] ... arguments"
 
 cli_description = """\
 Description of utility here
@@ -33,6 +38,11 @@ def get_options ():
 # 	parser.add_option ( "--log-level", type="str", action="callback", callback=set_log_level )
 # 	parser.add_option ( "-v", "--verbose", action="callback", callback=set_log_level, callback_kwargs={'log_level':logging.INFO} )
 # 	parser.add_option ( "-d", "--debug", action="callback", callback=set_log_level, callback_kwargs={'log_level':logging.DEBUG} )
+
+# 	def log_syslog ( option, opt, value, parser ):
+# 		from pysnips import logging_basic_syslog
+# 		logging_basic_syslog ( value )
+#   parser.add_option ( "--syslog-facility", type="str", action="callback", callback=log_syslog )
 	
 	opts, args = parser.parse_args ()
 	
@@ -48,7 +58,7 @@ def get_options ():
 # 	if len(args) < 3:
 # 		raise parser.error ( "at least 3 arguments expected" )
 # 	if len(args) > 5:
-# 		raise parser.error ( "no more than 3 arguments expected" )
+# 		raise parser.error ( "no more than 5 arguments expected" )
 
 	# All arguments are filenames
 # 	opts.files = args
