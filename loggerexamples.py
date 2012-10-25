@@ -1,7 +1,7 @@
 import logging, os
 from logging.handlers import SysLogHandler
 
-def logging_basic_syslog ( facility="user", level=logging.WARNING ):
+def logging_basic_syslog ( facility="user", level=None ):
 
 	"Set up a basic logging configuration using the local syslog."
 
