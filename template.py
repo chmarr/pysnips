@@ -1,6 +1,7 @@
 #! /usr/bin/env python
 
 import optparse
+# import loggging
 
 cli_usage = "%prog: [options] ... argument"
 
@@ -21,6 +22,17 @@ def get_options ():
 # 	parser.add_option ( "-i", "--thing", type="int", help="Change the value [%default]" )
 	
 # 	parser.add_option ( "-n", "--name", type="str", help="Change the name [%default]" )
+
+# 	def set_log_level ( option, opt, value, parser, log_level=None ):
+# 		if log_level is None:
+# 			try:
+# 				log_level = int(value)
+# 			except TypeError:
+# 				log_level = value
+# 		logging.get_logger().setLevel ( log_level )
+# 	parser.add_option ( "--log-level", type="str", action="callback", callback=set_log_level )
+# 	parser.add_option ( "-v", "--verbose", action="callback", callback=set_log_level, callback_kwargs={'log_level':logging.INFO} )
+# 	parser.add_option ( "-d", "--debug", action="callback", callback=set_log_level, callback_kwargs={'log_level':logging.DEBUG} )
 	
 	opts, args = parser.parse_args ()
 	
@@ -41,8 +53,18 @@ def get_options ():
 	# All arguments are filenames
 # 	opts.files = args
 
+	# First argument is a thing, others are filenames
+# 	opts.thing = args[0]
+# 	opts.files = args[1:]
+
 	return opts
 
 if __name__ == "__main__":
 	opts = get_options ()
-	# main ( opts.files )
+
+	# Simple option parsing
+# 	main ( opts.files )
+	
+	# If number/complexity of options is high, use pysnips.call_fn_with_opts
+# 	from pysnips import call_fn_with_opts
+# 	call_fn_with_opts ( main, opts )	
