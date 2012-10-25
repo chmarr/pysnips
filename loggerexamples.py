@@ -18,4 +18,5 @@ def logging_basic_syslog ( facility="user", level=logging.WARNING ):
 	syslog_handler.setFormatter ( formatter )
 	root_logger = logging.getLogger ()
 	root_logger.addHandler ( syslog_handler )
-	root_logger.setLevel ( level )
+	if level is not None:
+		root_logger.setLevel ( level )
